@@ -24,16 +24,6 @@ export default function Home() {
     setLoading(false);
   };
 
-  // const handleSubmit = () => {
-  //   // Simple dummy check
-  //   if (code.includes('def') && code.includes('return')) {
-  //     setResult('✅ Code looks good! (Dummy check passed)');
-  //   } else {
-  //     setResult('❌ Code might be incomplete. Try including a function and return statement.');
-  //   }
-  // };
-
-
   const handleSubmit = async () => {
   setLoading(true);
   setResult('');
@@ -86,12 +76,6 @@ export default function Home() {
           🚀 Submit
         </button>
       </div>
-
-      {/* {result && (
-        <div className="mt-6 p-4 bg-yellow-100 border border-yellow-500 rounded text-lg">
-          {result}
-        </div>
-      )} */}
 
       {result && (
         <div className="mt-6 p-4 bg-yellow-100 border border-yellow-500 rounded text-lg whitespace-pre-wrap">
