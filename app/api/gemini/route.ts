@@ -1,22 +1,3 @@
-// import { NextRequest, NextResponse } from 'next/server';
-// import { GoogleGenerativeAI } from '@google/generative-ai';
-
-// const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
-
-// export async function POST(req: NextRequest) {
-//   const { prompt } = await req.json();
-//   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-//   const result = await model.generateContent(prompt);
-//   const text = result.response.text();
-
-//   return NextResponse.json({ text });
-// }
-
-
-
-
-
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
