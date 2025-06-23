@@ -36,27 +36,6 @@ export default function Home() {
     setQuestion(stripMarkdown(data.text));
     setLoading(false);
   };
-
-  // const handleSubmit = async () => {
-  //   setLoading(true);
-  //   setResult('');
-  //   const res = await fetch('/api/gemini', {
-  //     method: 'POST',
-  //     body: JSON.stringify({
-  //       task: 'evaluate',
-  //       prompt: question,
-  //       code: code,
-  //     }),
-  //     headers: {
-  //       'Content-Type': 'application/json',
-  //     },
-  //   });
-
-  //   const data = await res.json();
-  //   setResult(stripMarkdown(data.text));
-  //   setLoading(false);
-  // };
-
   const handleSubmit = async () => {
   setLoading(true);
   setResult('');
@@ -76,21 +55,40 @@ export default function Home() {
     });
 
     const data = await res.json();
-    const report = stripMarkdown(data.text);
-    setResult(report);
+    const rawReport = stripMarkdown(data.text);
+
+const extractReport = (text: string) => {
+  const correctnessMatch = text.match(/correct(?:ness)?:\s*(.*)/i);
+  const timeComplexityMatch = text.match(/time complexity:\s*(.*)/i);
+   const spaceComplexityMatch = text.match(/space complexity:\s*(.*)/i);
+
+  const correctness = correctnessMatch?.[1]?.trim().toLowerCase() || "unknown";
+
+  return {
+    is_correct: correctness.includes("yes") || correctness.includes("correct") ? "yes" : "no",
+    correctness,
+    time_complexity: timeComplexityMatch?.[1]?.trim() || "Unknown",
+    space_complexity: spaceComplexityMatch?.[1]?.trim() || "Unknown"
+  };
+};
+
+
+const structuredReport = extractReport(rawReport);
+
+    setResult(rawReport);
 
     // 2️⃣ Send to backend (MongoDB)
     await fetch('http://localhost:5000/api/submissions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        question: question,
-        code: code,
-        report: report,
-      }),
-    });
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      question: question,
+      code: code,
+      report: structuredReport,  // 👈 not raw text
+    }),
+  });
   } catch (error) {
     console.error('Submission failed:', error);
     setResult('Something went wrong while submitting. Please try again.');
