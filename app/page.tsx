@@ -37,9 +37,32 @@ export default function Home() {
     setLoading(false);
   };
 
+  // const handleSubmit = async () => {
+  //   setLoading(true);
+  //   setResult('');
+  //   const res = await fetch('/api/gemini', {
+  //     method: 'POST',
+  //     body: JSON.stringify({
+  //       task: 'evaluate',
+  //       prompt: question,
+  //       code: code,
+  //     }),
+  //     headers: {
+  //       'Content-Type': 'application/json',
+  //     },
+  //   });
+
+  //   const data = await res.json();
+  //   setResult(stripMarkdown(data.text));
+  //   setLoading(false);
+  // };
+
   const handleSubmit = async () => {
-    setLoading(true);
-    setResult('');
+  setLoading(true);
+  setResult('');
+
+  try {
+    // 1️⃣ Call Gemini via your existing API
     const res = await fetch('/api/gemini', {
       method: 'POST',
       body: JSON.stringify({
@@ -53,9 +76,28 @@ export default function Home() {
     });
 
     const data = await res.json();
-    setResult(stripMarkdown(data.text));
-    setLoading(false);
-  };
+    const report = stripMarkdown(data.text);
+    setResult(report);
+
+    // 2️⃣ Send to backend (MongoDB)
+    await fetch('http://localhost:5000/api/submissions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        question: question,
+        code: code,
+        report: report,
+      }),
+    });
+  } catch (error) {
+    console.error('Submission failed:', error);
+    setResult('Something went wrong while submitting. Please try again.');
+  }
+
+  setLoading(false);
+};
 
   return (
     <main className={`${darkMode ? 'bg-gray-900 text-white' : 'bg-gradient-to-br from-slate-100 to-white text-gray-900'} min-h-screen flex items-center justify-center px-4 py-12`}>
