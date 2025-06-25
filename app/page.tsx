@@ -8,7 +8,8 @@ export default function Home() {
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [difficulty, setDifficulty] = useState('medium'); // default to medium
+  const [difficulty, setDifficulty] = useState('medium');
+  const [showPanel, setShowPanel] = useState(false);
 
   // Utility to strip markdown like #, **, etc.
   const stripMarkdown = (text: string) => {
@@ -22,10 +23,11 @@ export default function Home() {
   const handleGenerate = async () => {
     setLoading(true);
     setResult('');
+    setShowPanel(false);
     const res = await fetch('/api/gemini', {
       method: 'POST',
       body: JSON.stringify({
-        prompt: 'Give a random coding question on DSA topic',
+        prompt: 'Generate a random DSA coding questionzz',
         task: 'question',
       }),
       headers: {
@@ -36,55 +38,81 @@ export default function Home() {
     const data = await res.json();
     setQuestion(stripMarkdown(data.text));
     setLoading(false);
+    setShowPanel(true);
   };
 
-
   const handleSubmit = async () => {
-  setLoading(true);
-  setResult('');
+    setLoading(true);
+    setResult('');
 
-  try {
-    // 1️⃣ Call Gemini via your existing API
-    const res = await fetch('/api/gemini', {
-      method: 'POST',
-      body: JSON.stringify({
-        task: 'evaluate',
-        prompt: question,
-        code: code,
-      }),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    try {
+      const res = await fetch('/api/gemini', {
+        method: 'POST',
+        body: JSON.stringify({
+          task: 'evaluate',
+          prompt: question,
+          code: code,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-    const data = await res.json();
-    const report = stripMarkdown(data.text);
-    setResult(report);
+      const data = await res.json();
+      const rawReport = stripMarkdown(data.text);
 
-    // 2️⃣ Send to backend (MongoDB)
-    await fetch('http://localhost:5000/api/submissions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        question: question,
-        code: code,
-        report: report,
-        difficulty,
-      }),
-    });
-  } catch (error) {
-    console.error('Submission failed:', error);
-    setResult('Something went wrong while submitting. Please try again.');
-  }
+      const extractReport = (text: string) => {
+        const correctnessMatch = text.match(/correct(?:ness)?:\s*(.*)/i);
+        const timeComplexityMatch = text.match(/time complexity:\s*(.*)/i);
+        const spaceComplexityMatch = text.match(/space complexity:\s*(.*)/i);
 
-  setLoading(false);
-};
+        const correctness = correctnessMatch?.[1]?.trim().toLowerCase() || 'unknown';
+
+        return {
+          is_correct: correctness.includes('yes') || correctness.includes('correct') ? 'yes' : 'no',
+          correctness,
+          time_complexity: timeComplexityMatch?.[1]?.trim() || 'Unknown',
+          space_complexity: spaceComplexityMatch?.[1]?.trim() || 'Unknown',
+        };
+      };
+
+      const structuredReport = extractReport(rawReport);
+
+      setResult(rawReport);
+
+      await fetch('http://localhost:5000/api/submissions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          question: question,
+          code: code,
+          report: structuredReport,
+          difficulty,
+        }),
+      });
+    } catch (error) {
+      console.error('Submission failed:', error);
+      setResult('Something went wrong while submitting. Please try again.');
+    }
+
+    setLoading(false);
+  };
 
   return (
-    <main className={`${darkMode ? 'bg-gray-900 text-white' : 'bg-gradient-to-br from-slate-100 to-white text-gray-900'} min-h-screen flex items-center justify-center px-4 py-12`}>
-      <div className={`w-full max-w-4xl shadow-2xl rounded-2xl p-8 space-y-6 border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+    <main
+      className={`${
+        darkMode
+          ? 'bg-gray-900 text-white'
+          : 'bg-gradient-to-br from-slate-100 to-white text-gray-900'
+      } min-h-screen flex items-center justify-center px-4 py-12`}
+    >
+      <div
+        className={`w-full max-w-4xl shadow-2xl rounded-2xl p-8 space-y-6 border ${
+          darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+        }`}
+      >
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-indigo-600">EvoCode</h1>
           <button
@@ -105,7 +133,13 @@ export default function Home() {
         </div>
 
         {question && (
-          <div className={`p-4 rounded-md border ${darkMode ? 'bg-gray-700 border-indigo-400 text-white' : 'bg-indigo-50 border-indigo-300 text-indigo-900'} whitespace-pre-wrap`}>
+          <div
+            className={`p-4 rounded-md border ${
+              darkMode
+                ? 'bg-gray-700 border-indigo-400 text-white'
+                : 'bg-indigo-50 border-indigo-300 text-indigo-900'
+            } whitespace-pre-wrap`}
+          >
             {question}
           </div>
         )}
@@ -122,11 +156,11 @@ export default function Home() {
         />
 
         <div className="flex justify-between items-center">
-          <label className="mr-2 font-medium">Your felt difficulty:</label>
+          <label className="font-medium">Your felt difficulty:</label>
           <select
             value={difficulty}
             onChange={(e) => setDifficulty(e.target.value)}
-            className="border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="border px-2 py-1 rounded"
           >
             <option value="easy">Easy</option>
             <option value="medium">Medium</option>
@@ -134,20 +168,27 @@ export default function Home() {
           </select>
         </div>
 
+
         <div className="flex justify-end gap-4">
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className={`px-4 py-2 rounded-lg text-white ${loading ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'} transition`}
+            className={`px-4 py-2 rounded-lg text-white ${
+              loading ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'
+            } transition`}
           >
             {loading ? 'Checking...' : 'Submit'}
           </button>
         </div>
 
         {result && (
-          <div className={`mt-4 p-4 rounded-md border-l-4 text-sm whitespace-pre-wrap leading-relaxed ${
-            darkMode ? 'bg-gray-700 border-yellow-500 text-yellow-100' : 'bg-yellow-50 border-yellow-500 text-gray-800'
-          }`}>
+          <div
+            className={`mt-4 p-4 rounded-md border-l-4 text-sm whitespace-pre-wrap leading-relaxed ${
+              darkMode
+                ? 'bg-gray-700 border-yellow-500 text-yellow-100'
+                : 'bg-yellow-50 border-yellow-500 text-gray-800'
+            }`}
+          >
             <h2 className="font-semibold mb-2">Assessment Report:</h2>
             {result}
           </div>
