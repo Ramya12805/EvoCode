@@ -11,6 +11,8 @@ export default function Home() {
   const [difficulty, setDifficulty] = useState('medium');
   const [showPanel, setShowPanel] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [runResult, setRunResult] = useState('');
+  const [isRunning, setIsRunning] = useState(false);
 
   // Utility to strip markdown like #, **, etc.
   const stripMarkdown = (text: string) => {
@@ -41,6 +43,32 @@ export default function Home() {
     setLoading(false);
     // setShowPanel(true);
   };
+
+  const handleRun = async () => {
+  if (!code.trim()) {
+    setRunResult('⚠️ Please write code to run.');
+    return;
+  }
+
+  setIsRunning(true);
+  setRunResult('');
+
+  try {
+    const res = await fetch('http://localhost:5000/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+
+    const data = await res.json();
+    setRunResult(data.output || '⚠️ No output');
+  } catch (err) {
+    setRunResult('⚠️ Run failed.');
+  }
+
+  setIsRunning(false);
+};
+
 
   const handleSubmit = async () => {
     if (!code.trim()) {
@@ -201,7 +229,7 @@ export default function Home() {
           )}
 
           {/* Buttons */}
-          <div className="flex justify-end gap-4">
+          {/* <div className="flex justify-end gap-4">
             <button
               onClick={() => alert("Run feature not implemented yet")}
               className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
@@ -215,7 +243,57 @@ export default function Home() {
             >
               {loading ? 'Checking...' : 'Submit'}
             </button>
+          </div> */}
+
+          <div className="flex justify-end gap-4 mt-2">
+            <button
+              onClick={handleRun}
+              disabled={isRunning}
+              className={`px-4 py-2 flex items-center gap-2 rounded text-white ${
+                isRunning ? 'bg-gray-400' : 'bg-yellow-500 hover:bg-yellow-600'
+              }`}
+            >
+              {isRunning ? (
+                <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="white" strokeWidth="4"></circle>
+                  <path
+                    className="opacity-75"
+                    fill="white"
+                    d="M4 12a8 8 0 018-8v8H4z"
+                  ></path>
+                </svg>
+              ) : null}
+              Run
+            </button>
+
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className={`px-4 py-2 flex items-center gap-2 text-white rounded ${
+                loading ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'
+              }`}
+            >
+              {loading ? (
+                <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="white" strokeWidth="4"></circle>
+                  <path
+                    className="opacity-75"
+                    fill="white"
+                    d="M4 12a8 8 0 018-8v8H4z"
+                  ></path>
+                </svg>
+              ) : null}
+              Submit
+            </button>
           </div>
+          
+          {runResult && (
+            <div className="mt-4 p-4 border-l-4 rounded bg-blue-50 border-blue-500 text-sm text-blue-800 whitespace-pre-wrap">
+              <strong>Run Output:</strong>
+              <pre className="mt-2">{runResult}</pre>
+            </div>
+          )}
+
 
           {/* Report */}
           {result && (
