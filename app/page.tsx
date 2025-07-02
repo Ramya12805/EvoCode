@@ -229,21 +229,6 @@ export default function Home() {
           )}
 
           {/* Buttons */}
-          {/* <div className="flex justify-end gap-4">
-            <button
-              onClick={() => alert("Run feature not implemented yet")}
-              className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-            >
-              Run
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={loading}
-              className={`px-4 py-2 text-white rounded ${loading ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
-            >
-              {loading ? 'Checking...' : 'Submit'}
-            </button>
-          </div> */}
 
           <div className="flex justify-end gap-4 mt-2">
             <button
@@ -293,7 +278,6 @@ export default function Home() {
               <pre className="mt-2">{runResult}</pre>
             </div>
           )}
-
 
           {/* Report */}
           {result && (
