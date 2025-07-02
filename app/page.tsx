@@ -8,6 +8,11 @@ export default function Home() {
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const [difficulty, setDifficulty] = useState('medium');
+  const [showPanel, setShowPanel] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [runResult, setRunResult] = useState('');
+  const [isRunning, setIsRunning] = useState(false);
 
   // Utility to strip markdown like #, **, etc.
   const stripMarkdown = (text: string) => {
@@ -21,10 +26,11 @@ export default function Home() {
   const handleGenerate = async () => {
     setLoading(true);
     setResult('');
+    setShowPanel(false);
     const res = await fetch('/api/gemini', {
       method: 'POST',
       body: JSON.stringify({
-        prompt: 'Give a random coding question on DSA topic',
+        prompt: 'Generate a random DSA coding questionzz',
         task: 'question',
       }),
       headers: {
@@ -35,128 +41,257 @@ export default function Home() {
     const data = await res.json();
     setQuestion(stripMarkdown(data.text));
     setLoading(false);
+    // setShowPanel(true);
   };
 
-  // const handleSubmit = async () => {
-  //   setLoading(true);
-  //   setResult('');
-  //   const res = await fetch('/api/gemini', {
-  //     method: 'POST',
-  //     body: JSON.stringify({
-  //       task: 'evaluate',
-  //       prompt: question,
-  //       code: code,
-  //     }),
-  //     headers: {
-  //       'Content-Type': 'application/json',
-  //     },
-  //   });
+  const handleRun = async () => {
+  if (!code.trim()) {
+    setRunResult('⚠️ Please write code to run.');
+    return;
+  }
 
-  //   const data = await res.json();
-  //   setResult(stripMarkdown(data.text));
-  //   setLoading(false);
-  // };
-
-  const handleSubmit = async () => {
-  setLoading(true);
-  setResult('');
+  setIsRunning(true);
+  setRunResult('');
 
   try {
-    // 1️⃣ Call Gemini via your existing API
-    const res = await fetch('/api/gemini', {
+    const res = await fetch('http://localhost:5000/api/run', {
       method: 'POST',
-      body: JSON.stringify({
-        task: 'evaluate',
-        prompt: question,
-        code: code,
-      }),
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
     });
 
     const data = await res.json();
-    const report = stripMarkdown(data.text);
-    setResult(report);
-
-    // 2️⃣ Send to backend (MongoDB)
-    await fetch('http://localhost:5000/api/submissions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        question: question,
-        code: code,
-        report: report,
-      }),
-    });
-  } catch (error) {
-    console.error('Submission failed:', error);
-    setResult('Something went wrong while submitting. Please try again.');
+    setRunResult(data.output || '⚠️ No output');
+  } catch (err) {
+    setRunResult('⚠️ Run failed.');
   }
 
-  setLoading(false);
+  setIsRunning(false);
 };
 
+
+  const handleSubmit = async () => {
+    if (!code.trim()) {
+    setErrorMessage('⚠️ Please write your code before submitting.');
+    return;
+    }
+    setErrorMessage('');
+    setLoading(true);
+    setResult('');
+
+    try {
+      const res = await fetch('/api/gemini', {
+        method: 'POST',
+        body: JSON.stringify({
+          task: 'evaluate',
+          prompt: question,
+          code: code,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await res.json();
+      const rawReport = stripMarkdown(data.text);
+
+      const extractReport = (text: string) => {
+        const correctnessMatch = text.match(/correct(?:ness)?:\s*(.*)/i);
+        const timeComplexityMatch = text.match(/time complexity:\s*(.*)/i);
+        const spaceComplexityMatch = text.match(/space complexity:\s*(.*)/i);
+
+        const correctness = correctnessMatch?.[1]?.trim().toLowerCase() || 'unknown';
+
+        return {
+          is_correct: correctness.includes('yes') || correctness.includes('correct') ? 'yes' : 'no',
+          correctness,
+          time_complexity: timeComplexityMatch?.[1]?.trim() || 'Unknown',
+          space_complexity: spaceComplexityMatch?.[1]?.trim() || 'Unknown',
+        };
+      };
+
+      const structuredReport = extractReport(rawReport);
+
+      setResult(rawReport);
+
+      await fetch('http://localhost:5000/api/submissions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          question: question,
+          code: code,
+          report: structuredReport,
+          difficulty,
+        }),
+      });
+    } catch (error) {
+      console.error('Submission failed:', error);
+      setResult('Something went wrong while submitting. Please try again.');
+    }
+
+    setLoading(false);
+  };
+
   return (
-    <main className={`${darkMode ? 'bg-gray-900 text-white' : 'bg-gradient-to-br from-slate-100 to-white text-gray-900'} min-h-screen flex items-center justify-center px-4 py-12`}>
-      <div className={`w-full max-w-4xl shadow-2xl rounded-2xl p-8 space-y-6 border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-indigo-600">EvoCode</h1>
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="text-sm text-indigo-500 border border-indigo-500 px-3 py-1 rounded-md hover:bg-indigo-500 hover:text-white transition"
-          >
-            {darkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
-          </button>
-        </div>
-
-        <div className="flex justify-center">
-          <button
-            onClick={handleGenerate}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
-          >
-            Generate Question
-          </button>
-        </div>
-
-        {question && (
-          <div className={`p-4 rounded-md border ${darkMode ? 'bg-gray-700 border-indigo-400 text-white' : 'bg-indigo-50 border-indigo-300 text-indigo-900'} whitespace-pre-wrap`}>
-            {question}
-          </div>
-        )}
-
-        <textarea
-          placeholder="Write your code here (Python)"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          className={`w-full h-60 p-4 border rounded-lg font-mono text-sm resize-none leading-relaxed ${
-            darkMode
-              ? 'bg-gray-900 text-white border-gray-600 focus:ring-indigo-400'
-              : 'bg-white text-black border-gray-300 focus:ring-indigo-400'
-          } focus:outline-none focus:ring-2`}
-        />
-
-        <div className="flex justify-end gap-4">
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className={`px-4 py-2 rounded-lg text-white ${loading ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'} transition`}
-          >
-            {loading ? 'Checking...' : 'Submit'}
-          </button>
-        </div>
-
-        {result && (
-          <div className={`mt-4 p-4 rounded-md border-l-4 text-sm whitespace-pre-wrap leading-relaxed ${
-            darkMode ? 'bg-gray-700 border-yellow-500 text-yellow-100' : 'bg-yellow-50 border-yellow-500 text-gray-800'
-          }`}>
-            <h2 className="font-semibold mb-2">Assessment Report:</h2>
-            {result}
-          </div>
-        )}
+  <main className={`${darkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'} min-h-screen p-8`}>
+    {/* Header */}
+    <div className="flex justify-between items-center mb-6">
+      <h1 className="text-3xl font-bold text-indigo-600">EvoCode</h1>
+      <div className="flex gap-4">
+        <button
+          onClick={handleGenerate}
+          className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+        >
+          Generate Question
+        </button>
+        <button
+          onClick={() => setDarkMode(!darkMode)}
+          className="text-sm px-3 py-1 border rounded-md"
+        >
+          {darkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+        </button>
       </div>
-    </main>
-  );
+    </div>
+
+    {/* Question Preview */}
+    {question && !showPanel && (
+      <div className="border p-4 rounded flex justify-between items-center shadow-md bg-indigo-50">
+        <p className="truncate max-w-md font-medium text-indigo-700">{question.slice(0, 80)}...</p>
+        <button
+          onClick={() => setShowPanel(true)}
+          className="bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700"
+        >
+          View
+        </button>
+      </div>
+    )}
+
+    {/* Full View */}
+    {showPanel && (
+      <div className="grid grid-cols-2 gap-6 mt-6">
+        {/* Left: Question Full */}
+        <div className={`p-4 rounded-xl border shadow-md ${darkMode ? 'bg-gray-800' : 'bg-slate-100'}`}>
+          <h2 className="text-lg font-semibold text-indigo-600 mb-2">Question</h2>
+          <pre className="whitespace-pre-wrap text-sm">{question}</pre>
+        </div>
+
+        {/* Right: Code + Tools */}
+        <div className={`p-4 rounded-xl border shadow-md flex flex-col gap-4 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+          {/* <h2 className="text-lg font-semibold text-indigo-600">Your Code</h2> */}
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-indigo-600">Your Code</h2>
+            <button
+              onClick={() => setShowPanel(false)}
+              className="text-sm px-3 py-1 border rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+            >
+              ← Back
+            </button>
+          </div>
+          
+          <textarea
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="Write your Python code here..."
+            rows={10}
+            className={`w-full font-mono text-sm p-3 rounded border resize-none ${
+              darkMode ? 'bg-gray-900 text-white border-gray-600' : 'bg-gray-50 text-black border-gray-300'
+            }`}
+          />
+
+          {/* Difficulty */}
+          <div className="flex flex-col gap-2 mt-2">
+            <label className="text-sm font-medium">How did you feel about the difficulty?</label>
+            <div className="flex gap-3">
+              {[
+                { key: 'below_expected', label: 'Below Expected', color: 'bg-green-100 text-green-800 border-green-400' },
+                { key: 'as_expected', label: 'As Expected', color: 'bg-blue-100 text-blue-800 border-blue-400' },
+                { key: 'above_expected', label: 'Above Expected', color: 'bg-red-100 text-red-800 border-red-400' },
+              ].map(({ key, label, color }) => (
+                <button
+                  key={key}
+                  onClick={() => setDifficulty(key)}
+                  className={`px-4 py-1 border rounded-full text-sm transition ${
+                    color
+                  } ${difficulty === key ? 'ring-2 ring-offset-2 ring-indigo-500' : 'opacity-80 hover:opacity-100'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {errorMessage && (
+            <div className={`text-sm font-medium p-2 rounded bg-red-100 text-red-700 border border-red-300`}>
+              {errorMessage}
+            </div>
+          )}
+
+          {/* Buttons */}
+
+          <div className="flex justify-end gap-4 mt-2">
+            <button
+              onClick={handleRun}
+              disabled={isRunning}
+              className={`px-4 py-2 flex items-center gap-2 rounded text-white ${
+                isRunning ? 'bg-gray-400' : 'bg-yellow-500 hover:bg-yellow-600'
+              }`}
+            >
+              {isRunning ? (
+                <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="white" strokeWidth="4"></circle>
+                  <path
+                    className="opacity-75"
+                    fill="white"
+                    d="M4 12a8 8 0 018-8v8H4z"
+                  ></path>
+                </svg>
+              ) : null}
+              Run
+            </button>
+
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className={`px-4 py-2 flex items-center gap-2 text-white rounded ${
+                loading ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'
+              }`}
+            >
+              {loading ? (
+                <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="white" strokeWidth="4"></circle>
+                  <path
+                    className="opacity-75"
+                    fill="white"
+                    d="M4 12a8 8 0 018-8v8H4z"
+                  ></path>
+                </svg>
+              ) : null}
+              Submit
+            </button>
+          </div>
+          
+          {runResult && (
+            <div className="mt-4 p-4 border-l-4 rounded bg-blue-50 border-blue-500 text-sm text-blue-800 whitespace-pre-wrap">
+              <strong>Run Output:</strong>
+              <pre className="mt-2">{runResult}</pre>
+            </div>
+          )}
+
+          {/* Report */}
+          {result && (
+            <div className={`p-4 border-l-4 text-sm rounded mt-4 whitespace-pre-wrap ${
+              darkMode ? 'bg-gray-700 border-yellow-500 text-yellow-100' : 'bg-yellow-50 border-yellow-500 text-gray-800'
+            }`}>
+              <strong>Assessment Report:</strong>
+              <p className="mt-2">{result}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+  </main>
+);
+
 }
