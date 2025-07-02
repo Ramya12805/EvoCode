@@ -10,6 +10,7 @@ export default function Home() {
   const [darkMode, setDarkMode] = useState(false);
   const [difficulty, setDifficulty] = useState('medium');
   const [showPanel, setShowPanel] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Utility to strip markdown like #, **, etc.
   const stripMarkdown = (text: string) => {
@@ -42,6 +43,11 @@ export default function Home() {
   };
 
   const handleSubmit = async () => {
+    if (!code.trim()) {
+    setErrorMessage('⚠️ Please write your code before submitting.');
+    return;
+    }
+    setErrorMessage('');
     setLoading(true);
     setResult('');
 
@@ -188,6 +194,11 @@ export default function Home() {
             </div>
           </div>
 
+          {errorMessage && (
+            <div className={`text-sm font-medium p-2 rounded bg-red-100 text-red-700 border border-red-300`}>
+              {errorMessage}
+            </div>
+          )}
 
           {/* Buttons */}
           <div className="flex justify-end gap-4">
