@@ -167,18 +167,27 @@ export default function Home() {
           />
 
           {/* Difficulty */}
-          <div className="flex justify-between items-center mt-2">
-            <label className="text-sm font-medium">How difficult was it?</label>
-            <select
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value)}
-              className="px-3 py-1 border rounded text-sm"
-            >
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
+          <div className="flex flex-col gap-2 mt-2">
+            <label className="text-sm font-medium">How did you feel about the difficulty?</label>
+            <div className="flex gap-3">
+              {[
+                { key: 'below_expected', label: 'Below Expected', color: 'bg-green-100 text-green-800 border-green-400' },
+                { key: 'as_expected', label: 'As Expected', color: 'bg-blue-100 text-blue-800 border-blue-400' },
+                { key: 'above_expected', label: 'Above Expected', color: 'bg-red-100 text-red-800 border-red-400' },
+              ].map(({ key, label, color }) => (
+                <button
+                  key={key}
+                  onClick={() => setDifficulty(key)}
+                  className={`px-4 py-1 border rounded-full text-sm transition ${
+                    color
+                  } ${difficulty === key ? 'ring-2 ring-offset-2 ring-indigo-500' : 'opacity-80 hover:opacity-100'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
+
 
           {/* Buttons */}
           <div className="flex justify-end gap-4">
